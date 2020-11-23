@@ -1,0 +1,309 @@
+<head>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <section>
+    <h1>Project 5 - [Auto]Stitching Photo Mosaics </h1>
+    <p>By Myles Domingo</p>
+    <h2>Overview</h2>
+    <p>
+      Given a defined set of corresponding points, we can calculate a homography transformation between two images and warp and stitch them into a cohesive panorama.
+    </p>
+
+    <h2>Taking Photos and Defining Correspondances</h2>
+    <p>
+      For my photos, I took several photos of buildings around campus with my smartphone. I chose images with a distinctive planar background with several recognizable features.
+    </p>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./inputs/east_asian/ea1.png">
+      </div>
+      <div class="image">
+        <img src="./inputs/vlsb/vlsb1.png">
+      </div>
+      <div class="image">
+        <img src="./inputs/cafeteria/cafeteria1.png">
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./inputs/east_asian/ea2.png">
+      </div>
+      <div class="image">
+        <img src="./inputs/vlsb/vlsb2.png">
+      </div>
+      <div class="image">
+        <img src="./inputs/cafeteria/cafeteria2.png">
+      </div>
+    </div>
+
+    <h2>Homographies</h2>
+
+  
+    <p>
+      To setup for our homography, I input corresponding pairs of points between images using ginput(). I specifically selected edges and corners that were easy for me to identity. Given two sets of points, we can create a homography matrix that transforms our image, such that <b>p' = Hp.</b> We collect sets of at least four points, save it in a .txt file and perform linear least squares to find our homography matrix, H.
+    </p>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/h.jpg">
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea1_pts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb1_pts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria1_pts.png">
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea2_pts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb2_pts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria2_pts.png">
+      </div>
+    </div>
+  
+    <h2>Rectification</h2>
+    <p>Now that we have a way to project an image onto another using homography, we can rectify images. Given an image, we can select an object that is colloquially square and calculate a homography matrix, H between its points and a unit square [(0, 1), (1, 0), (0, 0), (1, 1)], then warp the image using H as our transformation matrix. Here are the results -- </p>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./inputs/sq/square1.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/sq1.png">
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./inputs/sq/square2.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/sq2.png">
+      </div>
+    </div>
+
+    <h2>Mosaic</h2>
+    <p>
+      We manually stitch our images after finding our corresponding points between images by hand. We calculate our homography matrix H and warp our image such that our chose points align. We then perform alpha blending by averaging the alpha channel of overlapping parts of our stitched image. 
+    </p>
+    <p><b>Note:</b> There are definitely some parts that our out of focus because the correspoding points I chose generally ignores that region. More detailed, obsure areas including sidewalks, grass fields, etc are continuous and hard to pinpoint with precision due to human error. Overall there is general "fuzziness". It is infeasible to collect points that perfectly capture each region in our image, so we will save this step for Part B. </p>
+
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/ea_manual.png">
+      </div>
+    </div>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/vlsb_manual.png">
+      </div>
+    </div>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/cafeteria_manual.png">
+      </div>
+    </div>
+
+
+    <h2>Autostitching Overview</h2>
+    <p>
+      Our goal of the second part of the project is to automate and improve processes of selecting and matching corresponding points. For this, we need the ability to select meaningful points in our image, desribe them, match them across different viewpoints, and discard outliers that may interfere with our homography calculations.
+    </p>
+
+    <p>We will refer to <u>“Multi-Image Matching using Multi-Scale Oriented Patches” by Brown et al.</u> when implemening our algorithm.</p>
+
+    <h2>Harris Point Detector</h2>
+    <p>We use the starter code to overlay harris points on our image. We modify it slightly to detect only peak corners, reducing the number of points while keeping radii between points low.</p>
+
+    
+ 
+
+    <h2>Adaptive Non-Maximal Suppression</h2>
+
+    
+    <p>In the above figures, we see how there are dense clusters of points, providing redundancy. We want to reduce the number of points while choosing the strongest corners and having a spatially even distribution.</p>
+
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/formula.png">
+      </div>
+    </div>
+    <br>
+
+    <p>To implement this, we use Adaptive Non-Maximal Suppression (ANMS). For each harris corner x_i, we calculate the minimum distance r_i to a stronger harris corner x_j. This r_i serves as a metric to determine how strong and essentiall a point is. We pick the top 500 points with the largest r_i values. </p>
+
+    <p>Let's take a look on how this fares against other metrics. We will compare for an image, its Harris corners (left), ANMS 500 (middle), and strongest 500 (right). We can see that ANMS has a much more even spacial distribution while still having strong corners. </p>
+
+    
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/auto/harris.png">
+        <p>Harris Corners</p>
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/ea1_hpts.png">
+        <p>ANMS 500</p>
+      </div>
+      <div class="image">
+        <img src="./outputs/auto/strongest.png">
+        <p>Strongest 500</p>
+      </div>
+    </div>
+
+    <p>Here are the ANMS 500 for each of our images --</p>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea1_hpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb1_hpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria1_hpts.png">
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea2_hpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb2_hpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria2_hpts.png">
+      </div>
+    </div>
+
+    <h2>Feature Descriptor Extraction</h2>
+    <p> For this, we transform our images into black and white and add Gaussian blur. We create unique descriptors for our images using 40x40 axis-aligned patches downsampled into an 8x8 grid. Here are some samples -- </p>
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/auto/patch1.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/auto/patch2.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/auto/patch3.png">
+      </div>
+    </div>
+
+    <h2>Feature Matching</h2>
+    <p>We find pairs of feature points that look similar by calculating the norm between our descriptor patches and selecting all the points that are less than a selected threshold. For matches, I've determined that e &lt; 5.0 provides good matches. </p>
+
+    <h2>RANSAC</h2>
+    <p>Outliers can affect the performance of our autostitching, due to the nature of calculating least squares for our homography. We want to determine that the feature points we match are not outliers. We use the RANSAC algorithm to randomly choose a subset of points and calculate a homography; we use this homography to find inliers. We iterate multiple times and fine the largest set of inliers and use that for our re-calculating our homography. <b>Below are our images with all our feature matched points, with blue being our inliers and green our outliers. </b></p>
+
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea1_mpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb1_mpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria1_mpts.png">
+      </div>
+    </div>
+    
+    <div class="image-row">
+      <div class="image">
+        <img src="./outputs/manual/ea2_mpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/vlsb2_mpts.png">
+      </div>
+      <div class="image">
+        <img src="./outputs/manual/cafeteria2_mpts.png">
+      </div>
+    </div>
+
+    <h2>Autostitching</h2>
+    <p>After ridding of outliers, we can re-calculate our homography as in Part A and generate mosaics of our image. Here are the results, side by side. <b>I definitely recommend opening image in new tab to note differneces.</b></p>
+
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/ea_manual.png">
+        <p>Manual</p>
+      </div>
+      <div class="image">
+        <img class="single" src="./outputs/east_asian.png">
+        <p>Auto</p>
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/vlsb_manual.png">
+        <p>Manual</p>
+      </div>
+      <div class="image">
+        <img class="single" src="./outputs/vlsb.png">
+        <p>Auto</p>
+      </div>
+    </div>
+
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/cafeteria_manual.png">
+        <p>Manual</p>
+      </div>
+      <div class="image">
+        <img class="single" src="./outputs/cafeteria.png">
+        <p>Auto</p>
+      </div>
+    </div>
+ 
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/roof.png">
+        <p>Auto (Bonus)</p>
+      </div>
+    </div>
+
+
+    <h2>Cropping</h2>
+    <p>Quick cropping can create a more realistic feel. Here are the final results with the modfiication below.</p>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/east_asian_c.png">
+      </div>
+    </div>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/vlsb_c.png">
+      </div>
+    </div>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/cafeteria_c.png">
+      </div>
+    </div>
+    <div class="image-row">
+      <div class="image">
+        <img class="single" src="./outputs/roof_c.png">
+      </div>
+    </div>
+
+    <h2>Cropping</h2>
+    <p>Very fun project, toughest challenges were learning how to use numpy functions to the fullest of their capabilities. Manipulating images as data requires a create skillset. Paper was straightforward to follow through, and the images look amazing.</p>
+  </section>
+</body>
